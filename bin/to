@@ -1,0 +1,104 @@
+#!/usr/bin/env ruby
+
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
+
+require 'version'
+
+BASE_DIR = File.join(Dir.home, ".to")
+TODO_FILE = "todo.log"
+PATH = "#{BASE_DIR}/#{TODO_FILE}"
+
+def putsHelp
+  puts "Commands:"
+  puts " to add [Task]"
+  puts " to ls"
+  puts " to do [Number]"
+  puts " to clear"
+  puts ""
+end
+
+def mkDirIfNotExist
+  if Dir.exist?(BASE_DIR)
+    return
+  else
+    Dir.mkdir(BASE_DIR, 0744)
+  end
+end
+
+def deleteall(delthem)
+  if FileTest.directory?(delthem) then
+    Dir.foreach( delthem ) do |file|
+      next if /^\.+$/ =~ file
+      deleteall( delthem.sub(/\/+$/,"") + "/" + file )
+    end
+    Dir.rmdir(delthem) rescue ""
+  else
+    File.delete(delthem)
+  end
+end
+
+argv = ARGV
+
+if argv.length == 0
+  putsHelp()
+  exit
+end
+
+action = argv[0]
+text   = argv[1..-1].join(' ')
+
+mkDirIfNotExist()
+
+case action
+when "add" then
+  File.open(PATH, "a") do |file|
+    file.write text+"\n"
+  end
+  puts "Added Task: " + text
+when "ls" then
+  lines = 0
+  if !File.exist?(PATH) or File.size(PATH) <= 1
+    puts "No Tasks"
+  else
+    File.open(PATH, "r") do |file|
+      while l = file.gets
+        lines += 1
+        puts "#{lines.to_s}. #{l}"
+      end
+    end
+  end
+when "do" then
+  if !File.exist?(PATH) or File.size(PATH) <= 1
+    puts "No Tasks"
+    exit
+  else
+    line = 0
+    buffer = []
+    task = ""
+    File.open(PATH, "r") do |file|
+      while l = file.gets
+        line += 1
+        if line == text.to_i
+          task = l
+        else
+          buffer<<l
+        end
+      end
+    end
+    if task == ""
+      puts "No Tasks"
+    else
+      if buffer.join() == ""
+        File.delete(PATH)
+      else
+        File.open(PATH, "w").puts buffer.join()
+      end
+      puts "Completed Task: #{task}"
+    end
+  end
+when "clear" then
+  deleteall(BASE_DIR)
+  puts "Clear all Tasks"
+else
+  putsHelp()
+end
